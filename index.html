@@ -1,0 +1,472 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time & Motion Tracker</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success: #16a34a;
+            --success-hover: #15803d;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --warning: #f59e0b;
+            --warning-hover: #d97706;
+            --bg: #f3f4f6;
+            --card: #ffffff;
+            --text: #1f2937;
+            --border: #e5e7eb;
+        }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        body { background-color: var(--bg); color: var(--text); padding: 20px; margin: 0; }
+        
+        .container { max-width: 900px; margin: 0 auto 20px auto; background: var(--card); padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        
+        h1, h2, h3 { margin-top: 0; color: #111827; }
+        h1 { border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 20px; }
+        h2 { font-size: 1.25rem; margin-bottom: 15px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 25px; }
+        
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-weight: 600; margin-bottom: 5px; font-size: 0.9rem; }
+        .form-group input, .form-group select, .form-group textarea {
+            padding: 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem;
+        }
+        .form-group input[readonly] { background-color: #f9fafb; color: #6b7280; }
+        
+        /* Timer Buttons */
+        .timer-btn {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 15px; border: 1px solid var(--border); border-radius: 6px;
+            background: #f9fafb; cursor: pointer; transition: all 0.2s; font-size: 1rem; font-weight: 500;
+        }
+        .timer-btn:hover { background: #e5e7eb; }
+        .timer-btn.active { background: var(--success); color: white; border-color: var(--success); animation: pulse 2s infinite; }
+        .timer-btn.active:hover { background: var(--success-hover); }
+        .time-display { font-family: monospace; font-size: 1.1rem; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px; }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+        }
+
+        /* Checkboxes section */
+        .checkbox-group { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-bottom: 20px; padding: 15px; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border); }
+        .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: #4b5563; }
+        .checkbox-item input { width: 16px; height: 16px; pointer-events: none; }
+
+        /* Actions */
+        .actions { display: flex; gap: 15px; margin-top: 20px; }
+        .btn { padding: 12px 20px; border: none; border-radius: 4px; font-weight: 600; cursor: pointer; color: white; transition: background 0.2s; font-size: 1rem; text-align: center; }
+        .btn-primary { background-color: var(--primary); flex: 1; }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        .btn-success { background-color: var(--success); flex: 1; }
+        .btn-success:hover { background-color: var(--success-hover); }
+        .btn-danger { background-color: var(--danger); }
+        .btn-danger:hover { background-color: var(--danger-hover); }
+        .btn-warning { background-color: var(--warning); color: #fff; width: 100%; margin-bottom: 15px;}
+        .btn-warning:hover { background-color: var(--warning-hover); }
+
+        /* History Table */
+        .table-container { overflow-x: auto; margin-top: 15px; border: 1px solid var(--border); border-radius: 6px; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
+        th, td { padding: 12px 15px; border-bottom: 1px solid var(--border); }
+        th { background-color: #f8fafc; font-weight: 600; color: #4b5563; }
+        tr:last-child td { border-bottom: none; }
+        .empty-state { text-align: center; padding: 30px; color: #6b7280; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Active Case Tracker</h1>
+    
+    <div class="grid-2">
+        <div class="form-group">
+            <label for="agentName">Agent Name</label>
+            <input type="text" id="agentName" onchange="saveCurrentState()" placeholder="John Doe">
+        </div>
+        <div class="form-group">
+            <label for="quartile">Teammate Quartile</label>
+            <select id="quartile" onchange="saveCurrentState()">
+                <option value="">Select Quartile...</option>
+                <option value="Q1">Q1</option>
+                <option value="Q2">Q2</option>
+                <option value="Q3">Q3</option>
+                <option value="Q4">Q4</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="caseNumber">Case Number</label>
+            <input type="text" id="caseNumber" onchange="saveCurrentState()" placeholder="CAS-12345">
+        </div>
+        <div class="form-group">
+            <label for="caseReason">Case Reason</label>
+            <input type="text" id="caseReason" onchange="saveCurrentState()" placeholder="Brief description...">
+        </div>
+        <div class="form-group" style="grid-column: span 2;">
+            <label for="shiftDate">Shift Date (MST)</label>
+            <input type="text" id="shiftDate" readonly>
+        </div>
+    </div>
+
+    <button class="btn btn-warning" onclick="pauseAll()">Pause All Timers</button>
+
+    <h2>1. Initial Interaction</h2>
+    <div class="grid-3">
+        <button class="timer-btn" id="btn_greeting" onclick="toggleTimer('greeting')">Greeting <span class="time-display" id="time_greeting">00:00</span></button>
+        <button class="timer-btn" id="btn_verification" onclick="toggleTimer('verification')">Verification <span class="time-display" id="time_verification">00:00</span></button>
+        <button class="timer-btn" id="btn_probing" onclick="toggleTimer('probing')">Probing <span class="time-display" id="time_probing">00:00</span></button>
+    </div>
+
+    <h2>2. Investigation (Tools Used)</h2>
+    <div class="checkbox-group" id="investigation_checkboxes"></div>
+
+    <div class="grid-3" id="tools_buttons"></div>
+
+    <h2>3. Wrap Up</h2>
+    <div class="grid-2">
+        <button class="timer-btn" id="btn_presentation" onclick="toggleTimer('presentation')">Presentation of Resolution <span class="time-display" id="time_presentation">00:00</span></button>
+        <button class="timer-btn" id="btn_recap" onclick="toggleTimer('recap')">Recap & Closing <span class="time-display" id="time_recap">00:00</span></button>
+    </div>
+
+    <h2>4. Final Details</h2>
+    <div class="grid-2">
+        <div class="form-group">
+            <label for="compliance">Compliance Met</label>
+            <select id="compliance" onchange="saveCurrentState()">
+                <option value="">Select...</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="notes">Other Notes</label>
+            <textarea id="notes" rows="3" onchange="saveCurrentState()" placeholder="Add any additional context here..."></textarea>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button class="btn btn-danger" onclick="resetCurrentForm()">Reset / Cancel Case</button>
+        <button class="btn btn-success" onclick="saveCaseToHistory()">Save Case & Reset</button>
+    </div>
+</div>
+
+<div class="container">
+    <h2>Saved Entries History</h2>
+    
+    <div class="table-container">
+        <table id="historyTable">
+            <thead>
+                <tr>
+                    <th>Case Number</th>
+                    <th>Agent</th>
+                    <th>Date</th>
+                    <th>Total Tools Used</th>
+                    <th>Compliance</th>
+                </tr>
+            </thead>
+            <tbody id="historyBody">
+                <tr><td colspan="5" class="empty-state">No saved entries yet.</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="actions">
+        <button class="btn btn-danger" style="flex: 0 0 auto;" onclick="clearHistory()">Clear History</button>
+        <button class="btn btn-primary" onclick="exportHistoryCSV()">Export All Saved Entries to CSV</button>
+    </div>
+</div>
+
+<script>
+    const tools = [
+        { id: 'panda', name: 'Panda' },
+        { id: 'sfdc', name: 'SFDC' },
+        { id: 'otto', name: 'OTTO' },
+        { id: 'ikb', name: 'IKB' },
+        { id: 'inapp', name: 'In-app' },
+        { id: 'cobrowse', name: 'Co-Browse' },
+        { id: 'helix', name: 'Helix' },
+        { id: 'hippo', name: 'Hippo' },
+        { id: 'elevate', name: 'Elevate' },
+        { id: 'dangerzone', name: 'Dangerzone' }
+    ];
+    const phases = ['greeting', 'verification', 'probing', 'presentation', 'recap'];
+    
+    let timers = {};
+    let activeTimer = null;
+    let timerInterval = null;
+
+    // --- Initialization ---
+    function init() {
+        const chkContainer = document.getElementById('investigation_checkboxes');
+        const btnContainer = document.getElementById('tools_buttons');
+        
+        tools.forEach(tool => {
+            chkContainer.innerHTML += `<div class="checkbox-item"><input type="checkbox" id="chk_${tool.id}" readonly tabindex="-1"><label for="chk_${tool.id}">${tool.name}</label></div>`;
+            btnContainer.innerHTML += `<button class="timer-btn" id="btn_${tool.id}" onclick="toggleTimer('${tool.id}')">${tool.name} <span class="time-display" id="time_${tool.id}">00:00</span></button>`;
+            timers[tool.id] = 0;
+        });
+        phases.forEach(phase => timers[phase] = 0);
+
+        setShiftDate();
+        loadCurrentState();
+        renderHistoryTable();
+        timerInterval = setInterval(tick, 1000);
+    }
+
+    function setShiftDate() {
+        const dateOpt = { timeZone: 'America/Denver', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
+        document.getElementById('shiftDate').value = new Intl.DateTimeFormat('en-US', dateOpt).format(new Date());
+    }
+
+    // --- Timer Logic ---
+    function toggleTimer(id) {
+        if (activeTimer === id) {
+            activeTimer = null;
+        } else {
+            activeTimer = id;
+            if (tools.find(t => t.id === id)) {
+                document.getElementById(`chk_${id}`).checked = true;
+            }
+        }
+        updateUI();
+        saveCurrentState();
+    }
+
+    function pauseAll() { activeTimer = null; updateUI(); saveCurrentState(); }
+
+    function tick() {
+        if (activeTimer) {
+            timers[activeTimer]++;
+            updateDisplay(activeTimer);
+            if(timers[activeTimer] % 5 === 0) saveCurrentState(); 
+        }
+    }
+
+    function formatTime(totalSeconds) {
+        const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+        const s = (totalSeconds % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+    }
+
+    function updateDisplay(id) {
+        document.getElementById(`time_${id}`).innerText = formatTime(timers[id]);
+    }
+
+    function updateUI() {
+        document.querySelectorAll('.timer-btn').forEach(btn => btn.classList.remove('active'));
+        if (activeTimer) document.getElementById(`btn_${activeTimer}`).classList.add('active');
+        
+        tools.forEach(tool => {
+            document.getElementById(`chk_${tool.id}`).checked = (timers[tool.id] > 0 || activeTimer === tool.id);
+        });
+    }
+
+    // --- Active Case State Management ---
+    function saveCurrentState() {
+        const data = {
+            agentName: document.getElementById('agentName').value,
+            quartile: document.getElementById('quartile').value,
+            caseNumber: document.getElementById('caseNumber').value,
+            caseReason: document.getElementById('caseReason').value,
+            shiftDate: document.getElementById('shiftDate').value,
+            compliance: document.getElementById('compliance').value,
+            notes: document.getElementById('notes').value,
+            timers: timers,
+            activeTimer: activeTimer
+        };
+        localStorage.setItem('tm_tracker_active', JSON.stringify(data));
+    }
+
+    function loadCurrentState() {
+        const saved = localStorage.getItem('tm_tracker_active');
+        if (saved) {
+            try {
+                const data = JSON.parse(saved);
+                document.getElementById('agentName').value = data.agentName || '';
+                document.getElementById('quartile').value = data.quartile || '';
+                document.getElementById('caseNumber').value = data.caseNumber || '';
+                document.getElementById('caseReason').value = data.caseReason || '';
+                document.getElementById('compliance').value = data.compliance || '';
+                document.getElementById('notes').value = data.notes || '';
+                
+                timers = data.timers || timers;
+                activeTimer = data.activeTimer || null;
+
+                Object.keys(timers).forEach(id => { if (document.getElementById(`time_${id}`)) updateDisplay(id); });
+                updateUI();
+            } catch (e) { console.error("Error loading state", e); }
+        }
+    }
+
+    function resetCurrentForm() {
+        if (confirm("Clear current form? (This does NOT delete saved history entries).")) {
+            localStorage.removeItem('tm_tracker_active');
+            location.reload();
+        }
+    }
+
+    // --- History Management ---
+    function saveCaseToHistory() {
+        pauseAll();
+        
+        const caseNum = document.getElementById('caseNumber').value.trim();
+        if(!caseNum) {
+            alert("Please enter a Case Number before saving.");
+            return;
+        }
+
+        const history = JSON.parse(localStorage.getItem('tm_tracker_history') || '[]');
+        
+        const usedToolsCount = tools.filter(t => timers[t.id] > 0).length;
+        const usedToolsNames = tools.filter(t => timers[t.id] > 0).map(t => t.name).join(', ');
+
+        const entry = {
+            agentName: document.getElementById('agentName').value,
+            quartile: document.getElementById('quartile').value,
+            caseNumber: caseNum,
+            caseReason: document.getElementById('caseReason').value,
+            shiftDate: document.getElementById('shiftDate').value,
+            compliance: document.getElementById('compliance').value,
+            notes: document.getElementById('notes').value,
+            timers: { ...timers },
+            summary: {
+                usedToolsCount: usedToolsCount,
+                usedToolsNames: usedToolsNames
+            }
+        };
+
+        history.push(entry);
+        localStorage.setItem('tm_tracker_history', JSON.stringify(history));
+        
+        // Wipe active memory and reset the form
+        localStorage.removeItem('tm_tracker_active');
+        location.reload(); 
+    }
+
+    function renderHistoryTable() {
+        const history = JSON.parse(localStorage.getItem('tm_tracker_history') || '[]');
+        const tbody = document.getElementById('historyBody');
+        
+        if (history.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No saved entries yet.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = '';
+        history.forEach((entry) => {
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${entry.caseNumber || 'N/A'}</strong></td>
+                    <td>${entry.agentName || 'N/A'}</td>
+                    <td>${entry.shiftDate}</td>
+                    <td>${entry.summary.usedToolsCount} tools</td>
+                    <td>${entry.compliance || 'N/A'}</td>
+                </tr>
+            `;
+        });
+    }
+
+    function clearHistory() {
+        const history = JSON.parse(localStorage.getItem('tm_tracker_history') || '[]');
+        if (history.length === 0) {
+            alert("History is already empty.");
+            return;
+        }
+        if (confirm(`Are you sure you want to permanently delete all ${history.length} saved entries?`)) {
+            localStorage.removeItem('tm_tracker_history');
+            renderHistoryTable();
+        }
+    }
+
+    // --- Multi-Row CSV Export ---
+    function escapeCSV(text) {
+        if (!text) return '""';
+        text = text.toString();
+        if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+            text = text.replace(/"/g, '""');
+            return `"${text}"`;
+        }
+        return text;
+    }
+
+    function exportHistoryCSV() {
+        const history = JSON.parse(localStorage.getItem('tm_tracker_history') || '[]');
+        
+        if(history.length === 0) {
+            alert("No saved entries to export. Save a case first!");
+            return;
+        }
+
+        const headers = [
+            "Agent Name", "Teammate Quartile", "Case Number", "Case Reason", "Shift Date",
+            "Greeting", "Verification", "Probing", 
+            "Tools Used (Summary)", 
+            "Panda", "SFDC", "OTTO", "IKB", "In-app", "Co-Browse", "Helix", "Hippo", "Elevate", "Dangerzone",
+            "Presentation of Resolution", "Recap & Closing", 
+            "Compliance Met", "Other notes"
+        ];
+
+        let csvContent = headers.map(escapeCSV).join(',') + '\n';
+
+        history.forEach(entry => {
+            const rowData = [
+                entry.agentName,
+                entry.quartile,
+                entry.caseNumber,
+                entry.caseReason,
+                entry.shiftDate,
+                
+                formatTime(entry.timers['greeting']),
+                formatTime(entry.timers['verification']),
+                formatTime(entry.timers['probing']),
+                
+                entry.summary.usedToolsNames,
+                
+                formatTime(entry.timers['panda']),
+                formatTime(entry.timers['sfdc']),
+                formatTime(entry.timers['otto']),
+                formatTime(entry.timers['ikb']),
+                formatTime(entry.timers['inapp']),
+                formatTime(entry.timers['cobrowse']),
+                formatTime(entry.timers['helix']),
+                formatTime(entry.timers['hippo']),
+                formatTime(entry.timers['elevate']),
+                formatTime(entry.timers['dangerzone']),
+                
+                formatTime(entry.timers['presentation']),
+                formatTime(entry.timers['recap']),
+                
+                entry.compliance,
+                entry.notes
+            ];
+            csvContent += rowData.map(escapeCSV).join(',') + '\n';
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        
+        const dateStr = new Date().toISOString().slice(0,10);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `T&M_Batch_Export_${dateStr}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    window.onload = init;
+</script>
+
+</body>
+</html>
