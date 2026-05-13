@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Time & Motion Tracker</title>
+    <title>Time and Motion Tracker</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -121,9 +121,9 @@
 
     <h2>1. Initial Interaction</h2>
     <div class="grid-3">
-        <button class="timer-btn" id="btn_greeting" onclick="toggleTimer('greeting')">Greeting <span class="time-display" id="time_greeting">00:00</span></button>
-        <button class="timer-btn" id="btn_verification" onclick="toggleTimer('verification')">Verification <span class="time-display" id="time_verification">00:00</span></button>
-        <button class="timer-btn" id="btn_probing" onclick="toggleTimer('probing')">Probing <span class="time-display" id="time_probing">00:00</span></button>
+        <button class="timer-btn" id="btn_greeting" onclick="toggleTimer('greeting')">Greeting <span class="time-display" id="time_greeting">00:00:00</span></button>
+        <button class="timer-btn" id="btn_verification" onclick="toggleTimer('verification')">Verification <span class="time-display" id="time_verification">00:00:00</span></button>
+        <button class="timer-btn" id="btn_probing" onclick="toggleTimer('probing')">Probing <span class="time-display" id="time_probing">00:00:00</span></button>
     </div>
 
     <h2>2. Investigation (Tools Used)</h2>
@@ -133,8 +133,8 @@
 
     <h2>3. Wrap Up</h2>
     <div class="grid-2">
-        <button class="timer-btn" id="btn_presentation" onclick="toggleTimer('presentation')">Presentation of Resolution <span class="time-display" id="time_presentation">00:00</span></button>
-        <button class="timer-btn" id="btn_recap" onclick="toggleTimer('recap')">Recap & Closing <span class="time-display" id="time_recap">00:00</span></button>
+        <button class="timer-btn" id="btn_presentation" onclick="toggleTimer('presentation')">Presentation of Resolution <span class="time-display" id="time_presentation">00:00:00</span></button>
+        <button class="timer-btn" id="btn_recap" onclick="toggleTimer('recap')">Recap & Closing <span class="time-display" id="time_recap">00:00:00</span></button>
     </div>
 
     <h2>4. Final Details</h2>
@@ -211,7 +211,7 @@
         
         tools.forEach(tool => {
             chkContainer.innerHTML += `<div class="checkbox-item"><input type="checkbox" id="chk_${tool.id}" readonly tabindex="-1"><label for="chk_${tool.id}">${tool.name}</label></div>`;
-            btnContainer.innerHTML += `<button class="timer-btn" id="btn_${tool.id}" onclick="toggleTimer('${tool.id}')">${tool.name} <span class="time-display" id="time_${tool.id}">00:00</span></button>`;
+            btnContainer.innerHTML += `<button class="timer-btn" id="btn_${tool.id}" onclick="toggleTimer('${tool.id}')">${tool.name} <span class="time-display" id="time_${tool.id}">00:00:00</span></button>`;
             timers[tool.id] = 0;
         });
         phases.forEach(phase => timers[phase] = 0);
@@ -223,7 +223,6 @@
     }
 
     function setShiftDate() {
-        // Removed hour and minute options to just show the date
         const dateOpt = { timeZone: 'America/Denver', year: 'numeric', month: '2-digit', day: '2-digit' };
         document.getElementById('shiftDate').value = new Intl.DateTimeFormat('en-US', dateOpt).format(new Date());
     }
@@ -253,9 +252,10 @@
     }
 
     function formatTime(totalSeconds) {
-        const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+        const h = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
+        const m = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
         const s = (totalSeconds % 60).toString().padStart(2, '0');
-        return `${m}:${s}`;
+        return `${h}:${m}:${s}`;
     }
 
     function updateDisplay(id) {
