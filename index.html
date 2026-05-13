@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -87,7 +86,7 @@
 <body>
 
 <div class="container">
-    <h1>Active Case Tracker</h1>
+    <h1>Time and Motion Tracker</h1>
     
     <div class="grid-2">
         <div class="form-group">
@@ -224,7 +223,8 @@
     }
 
     function setShiftDate() {
-        const dateOpt = { timeZone: 'America/Denver', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
+        // Removed hour and minute options to just show the date
+        const dateOpt = { timeZone: 'America/Denver', year: 'numeric', month: '2-digit', day: '2-digit' };
         document.getElementById('shiftDate').value = new Intl.DateTimeFormat('en-US', dateOpt).format(new Date());
     }
 
