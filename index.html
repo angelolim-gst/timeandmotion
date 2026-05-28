@@ -201,8 +201,9 @@
     const phases = ['greeting', 'verification', 'probing', 'presentation', 'recap'];
     
     let timers = {};
-    let activeTimer = null;
+    let activeTimers = []; // Now an array to hold multiple active timer IDs
     let timerInterval = null;
+    let tickCount = 0;
 
     // --- Initialization ---
     function init() {
@@ -227,27 +228,43 @@
         document.getElementById('shiftDate').value = new Intl.DateTimeFormat('en-US', dateOpt).format(new Date());
     }
 
-    // --- Timer Logic ---
+    // --- Multi-Timer Logic ---
     function toggleTimer(id) {
-        if (activeTimer === id) {
-            activeTimer = null;
+        const index = activeTimers.indexOf(id);
+        
+        if (index > -1) {
+            // Timer is currently active, so pause it by removing from array
+            activeTimers.splice(index, 1);
         } else {
-            activeTimer = id;
+            // Timer is not active, add it to array to start it
+            activeTimers.push(id);
+            // If it's a tool, automatically check its box visually
             if (tools.find(t => t.id === id)) {
                 document.getElementById(`chk_${id}`).checked = true;
             }
         }
+        
         updateUI();
         saveCurrentState();
     }
 
-    function pauseAll() { activeTimer = null; updateUI(); saveCurrentState(); }
+    function pauseAll() { 
+        activeTimers = []; // Clear all active timers
+        updateUI(); 
+        saveCurrentState(); 
+    }
 
     function tick() {
-        if (activeTimer) {
-            timers[activeTimer]++;
-            updateDisplay(activeTimer);
-            if(timers[activeTimer] % 5 === 0) saveCurrentState(); 
+        if (activeTimers.length > 0) {
+            // Increment every timer that is currently active
+            activeTimers.forEach(id => {
+                timers[id]++;
+                updateDisplay(id);
+            });
+            
+            // Save state every 5 seconds to minimize localstorage write-lag
+            tickCount++;
+            if(tickCount % 5 === 0) saveCurrentState(); 
         }
     }
 
@@ -263,11 +280,18 @@
     }
 
     function updateUI() {
+        // Reset all buttons
         document.querySelectorAll('.timer-btn').forEach(btn => btn.classList.remove('active'));
-        if (activeTimer) document.getElementById(`btn_${activeTimer}`).classList.add('active');
         
+        // Add active class to all currently running timers
+        activeTimers.forEach(id => {
+            const btn = document.getElementById(`btn_${id}`);
+            if (btn) btn.classList.add('active');
+        });
+        
+        // Update checkboxes
         tools.forEach(tool => {
-            document.getElementById(`chk_${tool.id}`).checked = (timers[tool.id] > 0 || activeTimer === tool.id);
+            document.getElementById(`chk_${tool.id}`).checked = (timers[tool.id] > 0 || activeTimers.includes(tool.id));
         });
     }
 
@@ -282,7 +306,7 @@
             compliance: document.getElementById('compliance').value,
             notes: document.getElementById('notes').value,
             timers: timers,
-            activeTimer: activeTimer
+            activeTimers: activeTimers
         };
         localStorage.setItem('tm_tracker_active', JSON.stringify(data));
     }
@@ -300,7 +324,7 @@
                 document.getElementById('notes').value = data.notes || '';
                 
                 timers = data.timers || timers;
-                activeTimer = data.activeTimer || null;
+                activeTimers = data.activeTimers || [];
 
                 Object.keys(timers).forEach(id => { if (document.getElementById(`time_${id}`)) updateDisplay(id); });
                 updateUI();
